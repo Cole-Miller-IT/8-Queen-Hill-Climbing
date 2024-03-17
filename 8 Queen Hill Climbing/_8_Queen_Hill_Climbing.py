@@ -4,6 +4,7 @@
 #H3 is the sum of tiles misplaced rows and columns
 
 ################ Main Program ##########################
+from ast import Constant
 import time
 import random
 import heapq
@@ -13,9 +14,11 @@ import random
 from collections import defaultdict, deque, Counter
 from itertools import combinations
 
+
 FIFOQueue = deque
 LIFOQueue = list
 
+BOARDSIZE = 8
 
 class Problem(object):
     """The abstract class for a formal problem. A new domain subclasses this,
@@ -125,23 +128,67 @@ def hillClimbRandomRestart(problem):
         PrintBoard(currentNode.state)
         
         #if we found a board with no queens attacking eachother (a goal state)
-        if problem.is_goal(currentNode.state):
+        if problem.reachedGoal(currentNode.state):
             searching = False
             return currentNode.state  
         
         #Search for the next move to take
         else:
-            #print("not at goal state")
-            #generate all potential next states. so each queen can move to one of the other 7 empty spaces in its column and this is done for every one of the 8 queens
-            # so there are 8 * 7 = 56 possible next states to calculate     pg. 112 of the text book
-        
-            #Just generate one potential next state first to make sure it works
+            board = currentNode.state.copy() #Get a deep copy of the board state to calculate the next states on
+            
+            #Make a 2D array to store all of the heuristics values (number of conflicts) to determine what move will be the best
+            w, h = BOARDSIZE, BOARDSIZE
+            heuristicsBoard = [[-1 for x in range(w)] for y in range(h)]
 
+            #Generate all potential next states. so each queen can move to one of the other 7 empty spaces in its column and this is done for every one of the 8 queens
+            #so there are 8 * 7 = 56 possible next states to calculate     pg. 112 of the text book
+            column = 0
+            for queensValue in board:
+                print("\nQueen's original column: " + str(column) + "")
+                print("Queen's original row: " + str(queensValue))
+                
+                #generate all states for the other 7 spaces
+                for row in range(0,8):
+                    #print("rand row " + str(row))
+                    if (row == queensValue):
+                        #this is where the queen currently is
+                        print("Skipping row " + str(row) + " (current queen position)\n")
+                        heuristicsBoard[column][row] = 99 #current position
+                    else:
+                        #Generate the board if the current queen were to move into this row
+                        backupRow = queensValue
+                        board[column] = row
+                        
+                        print("Queen's new row: " + str(row))
+                        print("The future board state is: ")
+                        PrintBoard(board)
+
+                        #calculate the heuristic on this new board state (num of attacking queens)
+                        result = problem.checkQueenConflicts(board)  
+                        print("Number of conflicts for future board state is: " + str(result))
+
+                        #store this value for later
+                        heuristicsBoard[column][row] = result
+
+                        #undo the change above the board state
+                        board[column] = backupRow
+                        
+                column = column + 1
 
 
             #Determine which is the best (least amount of conflicts neighbor) to take
+            print("Heuristics board: ")
+            for row in heuristicsBoard:
+                print(str(row))
 
-            #if all neighbors are worse (<=) to the current node then we have hit a local maximum
+            def transpose(board):
+                return [[board[j][i] for j in range(len(board))] for i in range(len(board[0]))]
+            
+            print()
+            transposed = transpose(heuristicsBoard)
+            for row in transposed:
+                    print(str(row))
+            #if all neighbors are worse (>=) to the current node then we have hit a local minimum
                 #return currentNode #implment random restart here and decrement maxRestarts if the maxConflicts is not 0 (i.e. not at a goal state)
               
         
@@ -165,12 +212,34 @@ class EightQueen(Problem):
     def result(self, state, action):
         return -1
 
-    
-    def checkQueenConflicts(self, state):
-        return -1
+    #Returns the amount of conflicts/attacks between all of the queens on the board
+    def checkQueenConflicts(self, board):
+        result = 0
+        # Check all of the 8 queens for conflicts, going left to right
+        for column1 in range(len(board)):
+            for column2 in range(column1 + 1, len(board)):
+                # Get the row positions for the two queens
+                row1 = board[column1]
+                row2 = board[column2]
+            
+                #Check horizontal conflicts
+                if row1 == row2:
+                    #print("\nComparing Queen at Column: " + str(column1) + ", Row: " + str(row1) + " with Queen at Column: " + str(column2) + ", Row: " + str(row2))
+                    #print("Horizontal conflict detected")
+                    result += 1
+
+                # Check diagonal conflicts
+                if abs(column1 - column2) == abs(row1 - row2):
+                    #print("\nComparing Queen at Column: " + str(column1) + ", Row: " + str(row1) + " with Queen at Column: " + str(column2) + ", Row: " + str(row2))
+                    #print("Diagonal conflict detected")
+                    result += 1
+                        
+        return result
+        
+
     
     #Checks if the board contains any conflicts
-    def is_goal(self, board):
+    def reachedGoal(self, board):
         size = len(board)
         for i in range(size):
             for j in range(i + 1, size):
@@ -210,14 +279,14 @@ while (running):
     noConflictsBoard = [0, 6, 3, 5, 7, 1, 4, 2]
     
     #initalize the problem
-    e1 = EightQueen(noConflictsBoard)
-    print("The initial board is: ")
-    PrintBoard(e1.initial)
+    e1 = EightQueen(board)
+    #print("The initial board is: ")
+    #PrintBoard(e1.initial)
     
     
     #perform the hill climbing algorithm on the problem
     solution = hillClimbRandomRestart(e1)
-    print("The solution is: ")
-    PrintBoard(solution)
+    #print("The solution is: ")
+    #PrintBoard(solution)
     
     running = False
