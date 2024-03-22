@@ -19,7 +19,14 @@ from itertools import combinations
 FIFOQueue = deque
 LIFOQueue = list
 
+#Global vars for tracking metrics
 BOARDSIZE = 8
+
+totalTimeFirstChoice = 0
+totalTimeRandomRestart = 0
+    
+solutionsFirstChoice = 0
+solutionsRandomRestart = 0
 
 class Problem(object):
     """The abstract class for a formal problem. A new domain subclasses this,
@@ -118,27 +125,33 @@ class PriorityQueue:
         return len(self.items)
 
 
+#Attempts to solve the 8-Queen problem (given an inital problem with a starting board state), using random restart hill climbing that takes the best first value it sees
 def hillClimbRandomRestartFirstChoice(problem):
     currentNode = Node(problem.initial)
     maxRestarts = 100
+    global solutionsFirstChoice
     
     searching = True
     while(searching):
-        print("The current board state is: ")
-        PrintBoard(currentNode.state)
+        #print("The current board state is: ")
+        #PrintBoard(currentNode.state)
         
         #if we found a board with no queens attacking eachother (a goal state)
         if problem.reachedGoal(currentNode.state):
-            print("reached goal")
-            print("remaining restarts: " + str(maxRestarts))
+            #print("reached goal")
+            print("Remaining restarts: " + str(maxRestarts))
+            
+            currentNode.remainingRestart = maxRestarts
+            solutionsFirstChoice += 1
             searching = False
+            
             return currentNode
         
         #If the program wasn't able to find a solution in time
         elif maxRestarts < 0:
             print("Ran out of restarts")
-            print("Final board state is: ")
-            PrintBoard(currentNode.state)
+            #print("Final board state is: ")
+            #PrintBoard(currentNode.state)
             searching = False
             return currentNode
 
@@ -146,7 +159,7 @@ def hillClimbRandomRestartFirstChoice(problem):
         else:
             board = currentNode.state.copy() #Get a deep copy of the board state to calculate the next states on
             
-            #Generate all potential next states. So each queen can move to one of the other 7 empty spaces in its column and this is done for every one of the 8 queens
+            #Generate all potential next states one at a time. So each queen can move to one of the other 7 empty spaces in its column and this is done for every one of the 8 queens
             #so there are 8 * 7 = 56 possible next states to calculate     pg. 112 of the text book
             breakOut = False #Used to get out of the nested loops if a better heuristic is found
             column = 0
@@ -175,16 +188,16 @@ def hillClimbRandomRestartFirstChoice(problem):
                         #print("Number of conflicts for future board state is: " + str(nextHeuristicValueFound))
 
                         ####First choice starts here###
-                        #if the next board state found has a better heuristic value than the current state, take it 
+                        #if the next board state found has a better heuristic value than the current state, take it immediately
                         currentHeuristicValue = problem.checkQueenConflicts(currentNode.state) 
                         if nextHeuristicValueFound < currentHeuristicValue:
                             #print()
-                            print("better board state found")
-                            print(nextHeuristicValueFound)
+                            #print("better board state found")
+                            #print(nextHeuristicValueFound)
                             
                             #Move the queen to the better position
                             currentNode.state[column] = row
-                            breakOut = True #maybe I could design this better but I didn't want to completelty rewritethe code I had
+                            breakOut = True #Get out of the nested loops. maybe I could design this better but I didn't want to completelty rewrite the code I had
                             break
                         
                         else:
@@ -201,33 +214,38 @@ def hillClimbRandomRestartFirstChoice(problem):
                 
             #if you reached here then none of the possible moves resulted in a better heuristic
             #restart the search from a random board state
-            print("no moves were better, restarting ")
+            #print("no moves were better, restarting ")
             currentNode.state, maxRestarts = restart(maxRestarts)
                 
 
 
-
+#Attempts to solve the 8-Queen problem (given an inital problem with a starting board state), using random restart hill climbing
 def hillClimbRandomRestart(problem):
     currentNode = Node(problem.initial)
     maxRestarts = 100
+    global solutionsRandomRestart
     
     searching = True
     while(searching):
-        print("The current board state is: ")
-        PrintBoard(currentNode.state)
+        #print("The current board state is: ")
+        #PrintBoard(currentNode.state)
         
         #if we found a board with no queens attacking eachother (a goal state)
         if problem.reachedGoal(currentNode.state):
-            print("reached goal")
-            print("remaining restarts: " + str(maxRestarts))
+            #print("reached goal")
+            print("Remaining restarts: " + str(maxRestarts))
+            
+            currentNode.remainingRestart = maxRestarts
+            solutionsRandomRestart += 1
             searching = False
+            
             return currentNode
         
         #If the program wasn't able to find a solution in time
         elif maxRestarts < 0:
-            print("Ran out of restarts")
-            print("Final board state is: ")
-            PrintBoard(currentNode.state)
+            #print("Ran out of restarts")
+            #print("Final board state is: ")
+            #PrintBoard(currentNode.state)
             searching = False
             return currentNode
 
@@ -280,14 +298,16 @@ def hillClimbRandomRestart(problem):
             #for row in heuristicsBoard:
                 #print(str(row))
 
+            #Used so that the heuristics board matches the game boards positions
             def transpose(board):
                 return [[board[j][i] for j in range(len(board))] for i in range(len(board[0]))]
             
-            print()
+
+            #print()
             transposed = transpose(heuristicsBoard)
-            print("Heuristics board: ")
-            for row in transposed:
-                    print(str(row))
+            #print("Heuristics board: ")
+            #for row in transposed:
+                    #print(str(row))
                     
             #Takes the heuristics board and finds move(s) that gives the lowest heuristic 
             def getBestNeighbors(board):
@@ -317,23 +337,22 @@ def hillClimbRandomRestart(problem):
                             
                     row = row + 1
                     
-                print()
-                print("Best Heuristic found was: " + str(bestHeuristic))
+                #print()
+                #print("Best Heuristic found was: " + str(bestHeuristic))
                 return (bestMoves, bestHeuristic)
                         
-              
-                
+ 
             bestMovesFound, bestHeuristicValueFound = getBestNeighbors(transposed)
-            print()
-            print("Best move(s) found: (row, column)")
-            print(str(bestMovesFound))
+            #print()
+            #print("Best move(s) found: (row, column)")
+            #print(str(bestMovesFound))
             
             #if all neighbors are worse or the same (>=) to the current node then we have hit a local minimum   
             currentHeuristicValue = problem.checkQueenConflicts(currentNode.state) 
             if bestHeuristicValueFound >= currentHeuristicValue:
-                print()
-                print("local minimum found")
-                print("number of conflicts: " + str(currentHeuristicValue))   
+                #print()
+                #print("local minimum found")
+                #print("number of conflicts: " + str(currentHeuristicValue))   
                     
                 #Restart from a new board state
                 currentNode.state, maxRestarts = restart(maxRestarts)
@@ -347,8 +366,8 @@ def hillClimbRandomRestart(problem):
                 column = -1
                 #choose which move to make
                 if len(bestMovesFound) == 1:
-                    print()
-                    print("Single move")
+                    #print()
+                    #print("Single move")
                     #only one move found
                     row = bestMovesFound[0][0]
                     column = bestMovesFound[0][1]
@@ -356,8 +375,8 @@ def hillClimbRandomRestart(problem):
                     #print(column)
                     currentNode.state[column] = row
                 else:
-                    print()
-                    print("multiple moves move")
+                    #print()
+                    #print("multiple moves move")
                     #Randomly choose between the best moves
                     randomIndex = random.randint(0, len(bestMovesFound) - 1)
 
@@ -368,8 +387,8 @@ def hillClimbRandomRestart(problem):
                     currentNode.state[column] = row
                     
                 #currentNode.state[0] = 0
-                print()
-                print("Moving queen " + str(column) + " to row " + str(row))
+                #print()
+                #print("Moving queen " + str(column) + " to row " + str(row))
                 #print("next board state")
                 #PrintBoard(currentNode.state)
                 #result = problem.checkQueenConflicts(currentNode.state)
@@ -379,14 +398,13 @@ def hillClimbRandomRestart(problem):
             #return currentNode
             
             
-
-
 #The 8-Queen problem class that contains the heuristics, actions, goal state, etc..
 class EightQueen(Problem):
     #Arrange 8 queens so that none of them are attacking eachother on an 8x8 chess board
 
     def __init__(self, initial):
         self.initial = initial
+        self.remainingRestarts = 100
 
     #Returns the amount of conflicts/attacks between all of the queens on the board
     def checkQueenConflicts(self, board):
@@ -440,13 +458,14 @@ def PrintBoard(queenPositions):
                     line += ". "
             print(line)
         print("\n")
+      
         
 #Generate a new random board state for the 8-queen problem. array index = queen's column   and   array value = queen's row
 def generateRandomBoard():
     board = [random.randint(0,7) for x in range(8)]
     return board
 
-
+#Generates a new board and decrements the maxRestarts counter
 def restart(maxRestarts):  
     #implment random restart here and decrement maxRestarts if the maxConflicts is not 0 (i.e. not at a goal state)          
     maxRestarts = maxRestarts - 1
@@ -462,23 +481,61 @@ def restart(maxRestarts):
 running = True
 while (running):
     #Create a random board state for 8-Queen problem. ##static for testing
-    board = [1, 2, 3, 1, 5, 4, 0, 7]
-    noConflictsBoard = [0, 6, 3, 5, 7, 1, 4, 2]
-    
-    #initalize the problem
-    #e1 = EightQueen(board)
-    #print("The initial board is: ")
-    #PrintBoard(e1.initial)
+    #board = [1, 2, 3, 1, 5, 4, 0, 7]
+    #noConflictsBoard = [0, 6, 3, 5, 7, 1, 4, 2]
     
     
-    #perform the hill climbing algorithm on the problem
-    #solution = hillClimbRandomRestart(e1)
-    #print("The solution is: ")
-    #PrintBoard(solution.state)
+
+    #####hill climbing random restart####
+    #Loop 10 times
+    iterations = 10
+    for num in range(0,iterations):
+        start_time = time.time()
+        board = generateRandomBoard()
+        q1 = EightQueen(board)
+        
+        print()
+        print("----------------------------------------")
+        print("Initial: " + str(board))
+        PrintBoard(board)
+        node = hillClimbRandomRestart(q1)
+        
+        print("Final: " + str(node.state))
+        PrintBoard(node.state)
+        elapsedTime = time.time() - start_time
+        totalTimeRandomRestart += elapsedTime
+        print("Elapsed time: %s" % elapsedTime)
+        print("----------------------------------------")
+
+    #####first choice hill climbing######
+    #Loop 10 times
+    for num in range(0,iterations):
+        start_time = time.time()
+        board = generateRandomBoard()
+        q2 = EightQueen(board)
+        
+        print()
+        print("----------------------------------------")
+        print("Initial: " + str(board))
+        PrintBoard(board)
+        node = hillClimbRandomRestartFirstChoice(q2)
+        
+        print("Final: " + str(node.state))
+        PrintBoard(node.state)
+        elapsedTime = time.time() - start_time
+        totalTimeFirstChoice += elapsedTime
+        print("Elapsed time: %s" % elapsedTime)
+        print("----------------------------------------")
 
 
-    #####first choice hill climbing########
-    e2 = EightQueen(board)
-    solution = hillClimbRandomRestartFirstChoice(e2)
+    print("Comparison between the two algorithms:")
+    print("Total time (Random Restart): " + str(totalTimeRandomRestart))
+    print("Average time (Random Restart): " + str(totalTimeRandomRestart / iterations))
+    print("Solutions found: " + str(solutionsRandomRestart))
+    
+    print()
+    print("Total time (First Choice): " + str(totalTimeFirstChoice))
+    print("Average time (First Choice): " + str(totalTimeFirstChoice / iterations))
+    print("Solutions found: " + str(solutionsFirstChoice))
     
     running = False
